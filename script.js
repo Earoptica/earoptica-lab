@@ -10,9 +10,11 @@ let mouseY = -1000;
 const spacing = 20;
 const pixelSize = 16;
 
-/* EXTREMERE MIGRATIE */
-const radius = 1400;
-const pushStrength = 6,5;
+/* Onzichtbare interactiezone */
+const radius = 140;
+
+/* Sterkte van de migratie */
+const pushStrength = 6.5;
 
 const pixels = [];
 
@@ -46,20 +48,49 @@ function createPixels() {
 function updatePixel(pixel) {
   const dx = pixel.x - mouseX;
   const dy = pixel.y - mouseY;
-  const distance = Math.sqrt(dx * dx + dy * dy);
+
+  const distance = Math.sqrt(
+    dx * dx +
+    dy * dy
+  );
+
+  /*
+    Onzichtbare cirkel rond de muis.
+    Pixels binnen deze radius worden
+    van de cursor weggeduwd.
+  */
 
   if (distance < radius && distance > 0) {
-    const force = (radius - distance) / radius;
+    const force =
+      (radius - distance) / radius;
 
-    pixel.vx += (dx / distance) * force * pushStrength;
-    pixel.vy += (dy / distance) * force * pushStrength;
+    pixel.vx +=
+      (dx / distance) *
+      force *
+      pushStrength;
+
+    pixel.vy +=
+      (dy / distance) *
+      force *
+      pushStrength;
   }
 
-  /* veel trager terug naar oorspronkelijke positie */
-  pixel.vx += (pixel.homeX - pixel.x) * 0.012;
-  pixel.vy += (pixel.homeY - pixel.y) * 0.012;
+  /*
+    Trek pixels langzaam terug
+    naar hun oorspronkelijke plaats.
+  */
 
-  /* minder demping = meer chaos / overshoot */
+  pixel.vx +=
+    (pixel.homeX - pixel.x) * 0.012;
+
+  pixel.vy +=
+    (pixel.homeY - pixel.y) * 0.012;
+
+  /*
+    Demping.
+    Hogere waarde = langer blijven bewegen.
+  */
+
   pixel.vx *= 0.93;
   pixel.vy *= 0.93;
 
@@ -68,11 +99,25 @@ function updatePixel(pixel) {
 }
 
 function draw() {
-  /* zwarte onderlaag */
-  ctx.fillStyle = "#000000";
-  ctx.fillRect(0, 0, width, height);
+  /*
+    Zwarte laag onder de groene pixels.
+    Deze wordt zichtbaar wanneer de
+    groene pixels migreren.
+  */
 
-  /* groene pixelhuid */
+  ctx.fillStyle = "#000000";
+
+  ctx.fillRect(
+    0,
+    0,
+    width,
+    height
+  );
+
+  /*
+    Groene pixelhuid
+  */
+
   pixels.forEach((pixel) => {
     updatePixel(pixel);
 
@@ -89,17 +134,26 @@ function draw() {
   requestAnimationFrame(draw);
 }
 
-window.addEventListener("mousemove", (event) => {
-  mouseX = event.clientX;
-  mouseY = event.clientY;
-});
+window.addEventListener(
+  "mousemove",
+  (event) => {
+    mouseX = event.clientX;
+    mouseY = event.clientY;
+  }
+);
 
-window.addEventListener("mouseleave", () => {
-  mouseX = -1000;
-  mouseY = -1000;
-});
+window.addEventListener(
+  "mouseleave",
+  () => {
+    mouseX = -1000;
+    mouseY = -1000;
+  }
+);
 
-window.addEventListener("resize", resizeCanvas);
+window.addEventListener(
+  "resize",
+  resizeCanvas
+);
 
 resizeCanvas();
 draw();
