@@ -4,47 +4,29 @@ const ctx = canvas.getContext("2d");
 let width = window.innerWidth;
 let height = window.innerHeight;
 
-let mouseX = -1000;
-let mouseY = -1000;
+let pointerX = -1000;
+let pointerY = -1000;
 
-let previousMouseX = -1000;
-let previousMouseY = -1000;
+let previousPointerX = -1000;
+let previousPointerY = -1000;
 
 let lastMoveTime = performance.now();
 
 const spacing = 20;
 const pixelSize = 16;
 
-
-/* ========================================
-   INTERACTIE
-======================================== */
-
-const minRadius = 0;
 const maxRadius = 140;
+const maxPush = 9;
 
 let radius = 0;
 let targetRadius = 0;
-
-const minPush = 0;
-const maxPush = 9;
 
 let pushStrength = 0;
 let targetPushStrength = 0;
 
 let movementTimer = null;
 
-
-/* ========================================
-   PIXELS
-======================================== */
-
 const pixels = [];
-
-
-/* ========================================
-   CANVAS
-======================================== */
 
 function resizeCanvas() {
   width = window.innerWidth;
@@ -56,58 +38,37 @@ function resizeCanvas() {
   createPixels();
 }
 
-
-/* ========================================
-   PIXEL GRID
-======================================== */
-
 function createPixels() {
   pixels.length = 0;
 
   for (let x = 0; x < width + spacing; x += spacing) {
     for (let y = 0; y < height + spacing; y += spacing) {
-
       pixels.push({
         homeX: x,
         homeY: y,
-
-        x: x,
-        y: y,
-
+        x,
+        y,
         vx: 0,
         vy: 0
       });
-
     }
   }
 }
 
-
-/* ========================================
-   PIXEL PHYSICS
-======================================== */
-
 function updatePixel(pixel) {
-
-  const dx = pixel.x - mouseX;
-  const dy = pixel.y - mouseY;
+  const dx = pixel.x - pointerX;
+  const dy = pixel.y - pointerY;
 
   const distance = Math.sqrt(
     dx * dx +
     dy * dy
   );
 
-
-  /*
-    Duw pixels weg van de cursor.
-  */
-
   if (
     radius > 1 &&
     distance < radius &&
     distance > 0
   ) {
-
     const force =
       (radius - distance) / radius;
 
@@ -122,21 +83,11 @@ function updatePixel(pixel) {
       pushStrength;
   }
 
-
-  /*
-    Terug naar oorspronkelijke positie.
-  */
-
   pixel.vx +=
     (pixel.homeX - pixel.x) * 0.014;
 
   pixel.vy +=
     (pixel.homeY - pixel.y) * 0.014;
-
-
-  /*
-    Momentum.
-  */
 
   pixel.vx *= 0.92;
   pixel.vy *= 0.92;
@@ -145,45 +96,24 @@ function updatePixel(pixel) {
   pixel.y += pixel.vy;
 }
 
-
-/* ========================================
-   ANIMATIE
-======================================== */
-
 function draw() {
-
-  /*
-    Radius groeit rustig,
-    maar valt sneller terug.
-  */
-
   const radiusSpeed =
     targetRadius === 0
       ? 0.28
       : 0.14;
-
-  radius +=
-    (targetRadius - radius) *
-    radiusSpeed;
-
-
-  /*
-    Zelfde principe voor de kracht.
-  */
 
   const pushSpeed =
     targetPushStrength === 0
       ? 0.3
       : 0.14;
 
+  radius +=
+    (targetRadius - radius) *
+    radiusSpeed;
+
   pushStrength +=
     (targetPushStrength - pushStrength) *
     pushSpeed;
-
-
-  /*
-    Heel kleine waarden echt op nul zetten.
-  */
 
   if (radius < 0.5 && targetRadius === 0) {
     radius = 0;
@@ -196,29 +126,12 @@ function draw() {
     pushStrength = 0;
   }
 
-
-  /*
-    Zwarte onderlaag.
-  */
-
   ctx.fillStyle = "#000000";
-
-  ctx.fillRect(
-    0,
-    0,
-    width,
-    height
-  );
-
-
-  /*
-    Groene pixels.
-  */
+  ctx.fillRect(0, 0, width, height);
 
   ctx.fillStyle = "#00ff00";
 
   pixels.forEach((pixel) => {
-
     updatePixel(pixel);
 
     ctx.fillRect(
@@ -227,175 +140,129 @@ function draw() {
       pixelSize,
       pixelSize
     );
-
   });
-
 
   requestAnimationFrame(draw);
 }
 
+function handlePointerMove(event) {
+  const now = performance.now();
 
-/* ========================================
-   MUISBEWEGING
-======================================== */
+  if (previousPointerX < -500) {
+    previousPointerX = event.clientX;
+    previousPointerY = event.clientY;
 
-window.addEventListener(
-  "mousemove",
-  (event) => {
-
-    const now = performance.now();
-
-
-    /*
-      Eerste muisbeweging:
-      vorige positie meteen initialiseren.
-    */
-
-    if (previousMouseX < -500) {
-      previousMouseX = event.clientX;
-      previousMouseY = event.clientY;
-
-      mouseX = event.clientX;
-      mouseY = event.clientY;
-
-      lastMoveTime = now;
-
-      return;
-    }
-
-
-    const deltaX =
-      event.clientX - previousMouseX;
-
-    const deltaY =
-      event.clientY - previousMouseY;
-
-    const deltaTime =
-      Math.max(
-        now - lastMoveTime,
-        1
-      );
-
-
-    /*
-      Afgelegde afstand.
-    */
-
-    const distanceMoved =
-      Math.sqrt(
-        deltaX * deltaX +
-        deltaY * deltaY
-      );
-
-
-    /*
-      Pixels per milliseconde.
-    */
-
-    const speed =
-      distanceMoved / deltaTime;
-
-
-    /*
-      Normaliseer snelheid.
-
-      0    = stil
-      1    = snel
-    */
-
-    const normalizedSpeed =
-      Math.min(
-        speed / 2.2,
-        1
-      );
-
-
-    /*
-      Radius volledig afhankelijk
-      van bewegingssnelheid.
-    */
-
-    targetRadius =
-      normalizedSpeed *
-      maxRadius;
-
-
-    /*
-      Kracht ook afhankelijk
-      van snelheid.
-    */
-
-    targetPushStrength =
-      normalizedSpeed *
-      maxPush;
-
-
-    /*
-      Cursorpositie bijwerken.
-    */
-
-    mouseX = event.clientX;
-    mouseY = event.clientY;
-
-    previousMouseX = mouseX;
-    previousMouseY = mouseY;
+    pointerX = event.clientX;
+    pointerY = event.clientY;
 
     lastMoveTime = now;
+    return;
+  }
 
+  const deltaX =
+    event.clientX - previousPointerX;
 
-    /*
-      Stilstand detecteren.
-    */
+  const deltaY =
+    event.clientY - previousPointerY;
 
-    clearTimeout(movementTimer);
+  const deltaTime =
+    Math.max(now - lastMoveTime, 1);
 
-    movementTimer = setTimeout(() => {
+  const distanceMoved =
+    Math.sqrt(
+      deltaX * deltaX +
+      deltaY * deltaY
+    );
 
-      targetRadius = 0;
-      targetPushStrength = 0;
+  const speed =
+    distanceMoved / deltaTime;
 
-    }, 55);
+  const normalizedSpeed =
+    Math.min(
+      speed / 2.2,
+      1
+    );
 
+  targetRadius =
+    normalizedSpeed *
+    maxRadius;
+
+  targetPushStrength =
+    normalizedSpeed *
+    maxPush;
+
+  pointerX = event.clientX;
+  pointerY = event.clientY;
+
+  previousPointerX = pointerX;
+  previousPointerY = pointerY;
+
+  lastMoveTime = now;
+
+  clearTimeout(movementTimer);
+
+  movementTimer = setTimeout(() => {
+    targetRadius = 0;
+    targetPushStrength = 0;
+  }, 55);
+}
+
+/* Desktop + touch + stylus */
+window.addEventListener(
+  "pointermove",
+  handlePointerMove
+);
+
+/* Touch: zodra je je vinger neerzet */
+window.addEventListener(
+  "pointerdown",
+  (event) => {
+    pointerX = event.clientX;
+    pointerY = event.clientY;
+
+    previousPointerX = pointerX;
+    previousPointerY = pointerY;
+
+    lastMoveTime = performance.now();
   }
 );
 
-
-/* ========================================
-   MUIS VERLAAT SCHERM
-======================================== */
+window.addEventListener(
+  "pointerup",
+  () => {
+    targetRadius = 0;
+    targetPushStrength = 0;
+  }
+);
 
 window.addEventListener(
-  "mouseleave",
+  "pointercancel",
   () => {
+    targetRadius = 0;
+    targetPushStrength = 0;
+  }
+);
 
+window.addEventListener(
+  "pointerleave",
+  () => {
     targetRadius = 0;
     targetPushStrength = 0;
 
-    mouseX = -1000;
-    mouseY = -1000;
+    pointerX = -1000;
+    pointerY = -1000;
 
-    previousMouseX = -1000;
-    previousMouseY = -1000;
+    previousPointerX = -1000;
+    previousPointerY = -1000;
 
     clearTimeout(movementTimer);
-
   }
 );
-
-
-/* ========================================
-   RESIZE
-======================================== */
 
 window.addEventListener(
   "resize",
   resizeCanvas
 );
-
-
-/* ========================================
-   START
-======================================== */
 
 resizeCanvas();
 draw();
