@@ -11,8 +11,8 @@ const spacing = 20;
 const pixelSize = 16;
 
 /* EXTREMERE MIGRATIE */
-const radius = 5;
-const pushStrength = 200;
+const radius = 200;
+const pushStrength = 10;
 
 const pixels = [];
 
