@@ -15,6 +15,10 @@ let lastMoveTime = performance.now();
 const spacing = 20;
 const pixelSize = 16;
 
+/* ========================================
+   INTERACTIE
+======================================== */
+
 const maxRadius = 140;
 const maxPush = 9;
 
@@ -26,12 +30,15 @@ let targetPushStrength = 0;
 
 let movementTimer = null;
 
+/* ========================================
+   PIXELS
+======================================== */
+
 const pixels = [];
 
-
-/* ==============================
+/* ========================================
    CANVAS
-============================== */
+======================================== */
 
 function resizeCanvas() {
   width = window.innerWidth;
@@ -43,10 +50,9 @@ function resizeCanvas() {
   createPixels();
 }
 
-
-/* ==============================
-   PIXELS
-============================== */
+/* ========================================
+   PIXELS MAKEN
+======================================== */
 
 function createPixels() {
   pixels.length = 0;
@@ -67,10 +73,9 @@ function createPixels() {
   }
 }
 
-
-/* ==============================
-   PHYSICS
-============================== */
+/* ========================================
+   PIXEL PHYSICS
+======================================== */
 
 function updatePixel(pixel) {
   const dx = pixel.x - pointerX;
@@ -80,6 +85,11 @@ function updatePixel(pixel) {
     dx * dx +
     dy * dy
   );
+
+  /*
+    Pixels binnen de onzichtbare radius
+    worden weggeduwd.
+  */
 
   if (
     radius > 1 &&
@@ -100,27 +110,32 @@ function updatePixel(pixel) {
       pushStrength;
   }
 
-  /* terug naar raster */
+  /*
+    Langzame terugkeer naar
+    oorspronkelijke positie.
+  */
 
   pixel.vx +=
-    (pixel.homeX - pixel.x) * 0.014;
+    (pixel.homeX - pixel.x) * 0.008;
 
   pixel.vy +=
-    (pixel.homeY - pixel.y) * 0.014;
+    (pixel.homeY - pixel.y) * 0.008;
 
-  /* momentum */
+  /*
+    Meer momentum / latency.
+    Hogere waarde = langer blijven bewegen.
+  */
 
-  pixel.vx *= 0.92;
-  pixel.vy *= 0.92;
+  pixel.vx *= 0.96;
+  pixel.vy *= 0.96;
 
   pixel.x += pixel.vx;
   pixel.y += pixel.vy;
 }
 
-
-/* ==============================
-   SPEED CALCULATION
-============================== */
+/* ========================================
+   INTERACTIE OP BASIS VAN SNELHEID
+======================================== */
 
 function updateInteraction(x, y) {
   const now = performance.now();
@@ -152,14 +167,21 @@ function updateInteraction(x, y) {
   const speed =
     distanceMoved / deltaTime;
 
+  /*
+    Hoe sneller de beweging,
+    hoe groter het effect.
+  */
+
   const normalizedSpeed =
     Math.min(speed / 2.2, 1);
 
   targetRadius =
-    normalizedSpeed * maxRadius;
+    normalizedSpeed *
+    maxRadius;
 
   targetPushStrength =
-    normalizedSpeed * maxPush;
+    normalizedSpeed *
+    maxPush;
 
   pointerX = x;
   pointerY = y;
@@ -171,117 +193,37 @@ function updateInteraction(x, y) {
 
   clearTimeout(movementTimer);
 
+  /*
+    Laat het effect nog even leven
+    voordat het begint terug te vallen.
+  */
+
   movementTimer = setTimeout(() => {
     targetRadius = 0;
     targetPushStrength = 0;
-  }, 60);
+  }, 110);
 }
 
-
-/* ==============================
-   DESKTOP
-============================== */
-
-window.addEventListener(
-  "mousemove",
-  (event) => {
-    updateInteraction(
-      event.clientX,
-      event.clientY
-    );
-  }
-);
-
-
-/* ==============================
-   SMARTPHONE / TOUCH
-============================== */
-
-window.addEventListener(
-  "touchstart",
-  (event) => {
-    const touch = event.touches[0];
-
-    if (!touch) return;
-
-    pointerX = touch.clientX;
-    pointerY = touch.clientY;
-
-    previousX = pointerX;
-    previousY = pointerY;
-
-    lastMoveTime =
-      performance.now();
-
-    targetRadius = 20;
-    targetPushStrength = 2;
-  },
-  { passive: true }
-);
-
-
-window.addEventListener(
-  "touchmove",
-  (event) => {
-    const touch = event.touches[0];
-
-    if (!touch) return;
-
-    /*
-      Zorgt ervoor dat de browser
-      deze beweging niet als scroll
-      interpreteert.
-    */
-
-    event.preventDefault();
-
-    updateInteraction(
-      touch.clientX,
-      touch.clientY
-    );
-  },
-  { passive: false }
-);
-
-
-window.addEventListener(
-  "touchend",
-  () => {
-    targetRadius = 0;
-    targetPushStrength = 0;
-
-    previousX = -1000;
-    previousY = -1000;
-  }
-);
-
-
-window.addEventListener(
-  "touchcancel",
-  () => {
-    targetRadius = 0;
-    targetPushStrength = 0;
-
-    previousX = -1000;
-    previousY = -1000;
-  }
-);
-
-
-/* ==============================
-   DRAW
-============================== */
+/* ========================================
+   ANIMATIE
+======================================== */
 
 function draw() {
+  /*
+    Meer latency:
+    radius en kracht volgen hun target
+    veel trager.
+  */
+
   const radiusSpeed =
     targetRadius === 0
-      ? 0.28
-      : 0.14;
+      ? 0.10
+      : 0.07;
 
   const pushSpeed =
     targetPushStrength === 0
-      ? 0.3
-      : 0.14;
+      ? 0.12
+      : 0.07;
 
   radius +=
     (targetRadius - radius) *
@@ -291,7 +233,10 @@ function draw() {
     (targetPushStrength - pushStrength) *
     pushSpeed;
 
-  if (radius < 0.5 && targetRadius === 0) {
+  if (
+    radius < 0.5 &&
+    targetRadius === 0
+  ) {
     radius = 0;
   }
 
@@ -302,8 +247,9 @@ function draw() {
     pushStrength = 0;
   }
 
-
-  /* zwarte onderlaag */
+  /*
+    Zwarte onderlaag.
+  */
 
   ctx.fillStyle = "#000000";
 
@@ -314,8 +260,9 @@ function draw() {
     height
   );
 
-
-  /* groene pixels */
+  /*
+    Groene pixelhuid.
+  */
 
   ctx.fillStyle = "#00ff00";
 
@@ -333,20 +280,114 @@ function draw() {
   requestAnimationFrame(draw);
 }
 
+/* ========================================
+   DESKTOP
+======================================== */
 
-/* ==============================
+window.addEventListener(
+  "mousemove",
+  (event) => {
+    updateInteraction(
+      event.clientX,
+      event.clientY
+    );
+  }
+);
+
+/* ========================================
+   SMARTPHONE / TOUCH
+======================================== */
+
+window.addEventListener(
+  "touchstart",
+  (event) => {
+    const touch = event.touches[0];
+
+    if (!touch) return;
+
+    pointerX = touch.clientX;
+    pointerY = touch.clientY;
+
+    previousX = pointerX;
+    previousY = pointerY;
+
+    lastMoveTime =
+      performance.now();
+  },
+  { passive: true }
+);
+
+window.addEventListener(
+  "touchmove",
+  (event) => {
+    const touch = event.touches[0];
+
+    if (!touch) return;
+
+    event.preventDefault();
+
+    updateInteraction(
+      touch.clientX,
+      touch.clientY
+    );
+  },
+  { passive: false }
+);
+
+window.addEventListener(
+  "touchend",
+  () => {
+    targetRadius = 0;
+    targetPushStrength = 0;
+
+    previousX = -1000;
+    previousY = -1000;
+  }
+);
+
+window.addEventListener(
+  "touchcancel",
+  () => {
+    targetRadius = 0;
+    targetPushStrength = 0;
+
+    previousX = -1000;
+    previousY = -1000;
+  }
+);
+
+/* ========================================
+   MUIS VERLAAT SCHERM
+======================================== */
+
+window.addEventListener(
+  "mouseleave",
+  () => {
+    targetRadius = 0;
+    targetPushStrength = 0;
+
+    pointerX = -1000;
+    pointerY = -1000;
+
+    previousX = -1000;
+    previousY = -1000;
+
+    clearTimeout(movementTimer);
+  }
+);
+
+/* ========================================
    RESIZE
-============================== */
+======================================== */
 
 window.addEventListener(
   "resize",
   resizeCanvas
 );
 
-
-/* ==============================
+/* ========================================
    START
-============================== */
+======================================== */
 
 resizeCanvas();
 draw();
