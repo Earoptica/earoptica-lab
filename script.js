@@ -9,7 +9,10 @@ let mouseY = -1000;
 
 const spacing = 20;
 const pixelSize = 16;
-const radius = 140;
+
+/* EXTREMERE MIGRATIE */
+const radius = 260;
+const pushStrength = 6.5;
 
 const pixels = [];
 
@@ -48,34 +51,28 @@ function updatePixel(pixel) {
   if (distance < radius && distance > 0) {
     const force = (radius - distance) / radius;
 
-    pixel.vx += (dx / distance) * force * 2.2;
-    pixel.vy += (dy / distance) * force * 2.2;
+    pixel.vx += (dx / distance) * force * pushStrength;
+    pixel.vy += (dy / distance) * force * pushStrength;
   }
 
-  pixel.vx += (pixel.homeX - pixel.x) * 0.03;
-  pixel.vy += (pixel.homeY - pixel.y) * 0.03;
+  /* veel trager terug naar oorspronkelijke positie */
+  pixel.vx += (pixel.homeX - pixel.x) * 0.012;
+  pixel.vy += (pixel.homeY - pixel.y) * 0.012;
 
-  pixel.vx *= 0.88;
-  pixel.vy *= 0.88;
+  /* minder demping = meer chaos / overshoot */
+  pixel.vx *= 0.93;
+  pixel.vy *= 0.93;
 
   pixel.x += pixel.vx;
   pixel.y += pixel.vy;
 }
 
 function draw() {
-  // black layer
+  /* zwarte onderlaag */
   ctx.fillStyle = "#000000";
   ctx.fillRect(0, 0, width, height);
 
-  // white core
-  if (mouseX > -500) {
-    ctx.fillStyle = "#ffffff";
-    ctx.beginPath();
-    ctx.arc(mouseX, mouseY, 45, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  // green pixel layer
+  /* groene pixelhuid */
   pixels.forEach((pixel) => {
     updatePixel(pixel);
 
