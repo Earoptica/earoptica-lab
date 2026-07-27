@@ -15,20 +15,21 @@ let lastMoveTime = performance.now();
 const spacing = 20;
 const pixelSize = 16;
 
-/* Radius */
-const minRadius = 25;
-const maxRadius = 180;
+/* Interactiezone */
+const minRadius = 15;
+const maxRadius = 160;
 
 let radius = 0;
 let targetRadius = 0;
 
 /* Migratiekracht */
-const minPush = 2.5;
-const maxPush = 8;
+const minPush = 2;
+const maxPush = 9;
 
 let pushStrength = minPush;
 let targetPushStrength = minPush;
 
+/* Pixels */
 const pixels = [];
 
 let movementTimer;
@@ -50,7 +51,7 @@ function resizeCanvas() {
 
 
 /* ========================================
-   PIXELS
+   PIXELS MAKEN
 ======================================== */
 
 function createPixels() {
@@ -74,7 +75,7 @@ function createPixels() {
 
 
 /* ========================================
-   PIXEL PHYSICS
+   PIXELBEWEGING
 ======================================== */
 
 function updatePixel(pixel) {
@@ -85,6 +86,11 @@ function updatePixel(pixel) {
     dx * dx +
     dy * dy
   );
+
+  /*
+    Pixels binnen de onzichtbare radius
+    worden van de cursor weggeduwd.
+  */
 
   if (
     radius > 0 &&
@@ -105,7 +111,10 @@ function updatePixel(pixel) {
       pushStrength;
   }
 
-  /* langzaam terug naar thuispositie */
+  /*
+    Pixels keren langzaam terug
+    naar hun oorspronkelijke positie.
+  */
 
   pixel.vx +=
     (pixel.homeX - pixel.x) * 0.012;
@@ -113,7 +122,9 @@ function updatePixel(pixel) {
   pixel.vy +=
     (pixel.homeY - pixel.y) * 0.012;
 
-  /* momentum */
+  /*
+    Momentum / demping.
+  */
 
   pixel.vx *= 0.93;
   pixel.vy *= 0.93;
@@ -124,12 +135,13 @@ function updatePixel(pixel) {
 
 
 /* ========================================
-   ANIMATION
+   ANIMATIE
 ======================================== */
 
 function draw() {
   /*
-    Smooth naar doelwaarden bewegen.
+    Radius en kracht bewegen vloeiend
+    naar hun doelwaarde.
   */
 
   radius +=
@@ -139,7 +151,11 @@ function draw() {
     (targetPushStrength - pushStrength) * 0.12;
 
 
-  /* zwarte onderlaag */
+  /*
+    Zwarte onderlaag.
+    Deze wordt zichtbaar wanneer
+    de groene pixels migreren.
+  */
 
   ctx.fillStyle = "#000000";
 
@@ -151,12 +167,14 @@ function draw() {
   );
 
 
-  /* groene pixels */
+  /*
+    Groene pixelhuid.
+  */
+
+  ctx.fillStyle = "#00ff00";
 
   pixels.forEach((pixel) => {
     updatePixel(pixel);
-
-    ctx.fillStyle = "#00ff00";
 
     ctx.fillRect(
       Math.round(pixel.x),
@@ -166,114 +184,115 @@ function draw() {
     );
   });
 
+
   requestAnimationFrame(draw);
 }
 
 
 /* ========================================
-   MUIS
+   MUISBEWEGING + SNELHEID
 ======================================== */
 
-window.addEventListener(
-  "mousemove",
-  (event) => {
+window.addEventListener("mousemove", (event) => {
+  const now = performance.now();
 
-    const now = performance.now();
+  const deltaX =
+    event.clientX - previousMouseX;
 
-    const deltaX =
-      event.clientX - previousMouseX;
+  const deltaY =
+    event.clientY - previousMouseY;
 
-    const deltaY =
-      event.clientY - previousMouseY;
+  const deltaTime =
+    Math.max(now - lastMoveTime, 1);
 
-    const deltaTime =
-      Math.max(now - lastMoveTime, 1);
+  /*
+    Hoeveel afstand werd afgelegd
+    sinds het vorige mousemove-event?
+  */
 
+  const distanceMoved =
+    Math.sqrt(
+      deltaX * deltaX +
+      deltaY * deltaY
+    );
 
-    /*
-      Afstand per milliseconde.
-    */
+  /*
+    Snelheid in pixels per milliseconde.
+  */
 
-    const distanceMoved =
-      Math.sqrt(
-        deltaX * deltaX +
-        deltaY * deltaY
-      );
+  const speed =
+    distanceMoved / deltaTime;
 
-    const speed =
-      distanceMoved / deltaTime;
+  /*
+    Normaliseer snelheid.
 
+    Vanaf ongeveer 2 px/ms
+    behandelen we de beweging als maximaal.
+  */
 
-    /*
-      Normaliseer snelheid.
+  const normalizedSpeed =
+    Math.min(speed / 2, 1);
 
-      Rond 2 px/ms is al vrij snel.
-    */
+  /*
+    Traag bewegen = kleine radius.
+    Snel bewegen = grotere radius.
+  */
 
-    const normalizedSpeed =
-      Math.min(speed / 2, 1);
+  targetRadius =
+    minRadius +
+    normalizedSpeed *
+    (maxRadius - minRadius);
 
+  /*
+    Traag bewegen = minder kracht.
+    Snel bewegen = sterkere migratie.
+  */
 
-    /*
-      Traag bewegen:
-      kleine radius.
-
-      Snel bewegen:
-      grote radius.
-    */
-
-    targetRadius =
-      minRadius +
-      normalizedSpeed *
-      (maxRadius - minRadius);
-
-
-    /*
-      Ook de kracht groeit mee
-      met de snelheid.
-    */
-
-    targetPushStrength =
-      minPush +
-      normalizedSpeed *
-      (maxPush - minPush);
+  targetPushStrength =
+    minPush +
+    normalizedSpeed *
+    (maxPush - minPush);
 
 
-    mouseX = event.clientX;
-    mouseY = event.clientY;
+  mouseX = event.clientX;
+  mouseY = event.clientY;
 
-    previousMouseX = mouseX;
-    previousMouseY = mouseY;
+  previousMouseX = mouseX;
+  previousMouseY = mouseY;
 
-    lastMoveTime = now;
-
-
-    /*
-      Na stoppen krimpt alles terug.
-    */
-
-    clearTimeout(movementTimer);
-
-    movementTimer = setTimeout(() => {
-      targetRadius = 0;
-      targetPushStrength = minPush;
-    }, 110);
-
-  }
-);
+  lastMoveTime = now;
 
 
-window.addEventListener(
-  "mouseleave",
-  () => {
+  /*
+    Wanneer de muis stopt,
+    krimpt de interactiezone terug naar nul.
+  */
+
+  clearTimeout(movementTimer);
+
+  movementTimer = setTimeout(() => {
     targetRadius = 0;
     targetPushStrength = minPush;
+  }, 110);
+});
 
-    mouseX = -1000;
-    mouseY = -1000;
-  }
-);
 
+/* ========================================
+   MUIS VERLAAT SCHERM
+======================================== */
+
+window.addEventListener("mouseleave", () => {
+  targetRadius = 0;
+  targetPushStrength = minPush;
+
+  mouseX = -1000;
+  mouseY = -1000;
+});
+
+
+/* ========================================
+   RESIZE
+======================================== */
 
 window.addEventListener(
   "resize",
